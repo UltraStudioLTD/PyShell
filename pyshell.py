@@ -267,8 +267,8 @@ def prompt_parser(prompt_string: str) -> str:
             prompt_string = prompt_string.replace("$CWD$", variables["CWD"])
     if "$TIME$" in prompt_string and "$/TIME$" in prompt_string:
         tmp1, tmp2 = prompt_string.split("$TIME$")
-        timeformat, tmp3 = tmp2.split("$/TIME$")
-        prompt_string = prompt_string.replace(f"$TIME${timeformat}$/TIME$", datetime.now().strftime(timeformat))
+        timeformat, tmp2 = tmp2.split("$/TIME$")
+        prompt_string = prompt_string.replace("$TIME$$/TIME$", datetime.now().strftime(timeformat))
     return prompt_string
 
 
@@ -300,17 +300,29 @@ def boot():
         time.sleep(1)
         status.update("[italic yellow]Detecting if configuration file exists...[/]")
         time.sleep(3)
-        status.update(".       ")
         if detect_configuration_file():
-            status.update("[bold green]Exists[/]")
-            read_configuration()
-        else:
-            status.update("[bold red]Does Not Exist! Creating New Configuration...[/]")
+            status.update("[bold green]Configuration File Exists! Reading Configuration...[/]")
+            conf_file = open("conf.json", "r")
+            variables = json.load(conf_file)
+            conf_file.close()
             time.sleep(2)
-            status.update(".      ")
-            create_configuration()
+            status.update("[bold green]Configuration Reading Finished[/]")
+            time.sleep(2)
+        else:
+            status.update("[bold red]Configuration File Does Not Exist! Generating New Configuration...[/]")
+            conf_file = open("conf.json", "x")
+            conf_file.close()
+            time.sleep(2)
+            status.update("[bold green]Configuration Generated![/]")
+            time.sleep(2)
         variables["CWD"] = variables["HOME_PATH"] = os.getcwd()
-        save_configuration()
+        status.update("[bold green]Updating Configuration File...[/]")
+        time.sleep(2)
+        os.remove("conf.json")
+        conf = open("conf.json", "w")
+        json.dump(variables, conf)
+        conf.close()
+        status.update("[bold green]Configuration File Updated![/]")
         time.sleep(2)
         status.update("[bold italic white]Detecting[/] [red]C[orange]o[cyan]l[green]o[purple]r[/] Support...[/]")
         time.sleep(1)
@@ -379,6 +391,11 @@ def command_parser(commands_string: str) -> None:
                         logger("Directory created", "success")
                     except Exception as except_error:
                         logger(f"Failed to create directory! Exception Encountered: {except_error}", "error")
+        elif command == "eval":
+            if len(arguments) >= 1:
+                printf(eval(''.join(arguments)))
+            else:
+                logger("Need at expression to evaluate", "error")
         elif command == "get":
             if len(arguments) != 0:
                 try:
@@ -396,7 +413,7 @@ def command_parser(commands_string: str) -> None:
                 else:
                     logger("Variable doesn't exist!", "error")
             else:
-                logger("Need Argument!", "error")
+                logger("Need Variable and New Setting Arguments!", "error")
         elif command == "downcli":
             if len(arguments) >= 1:
                 if arguments[0] in ["-h", "--help"]:
