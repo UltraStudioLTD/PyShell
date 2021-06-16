@@ -267,8 +267,8 @@ def prompt_parser(prompt_string: str) -> str:
             prompt_string = prompt_string.replace("$CWD$", variables["CWD"])
     if "$TIME$" in prompt_string and "$/TIME$" in prompt_string:
         tmp1, tmp2 = prompt_string.split("$TIME$")
-        timeformat, tmp2 = tmp2.split("$/TIME$")
-        prompt_string = prompt_string.replace("$TIME$$/TIME$", datetime.now().strftime(timeformat))
+        timeformat, tmp3 = tmp2.split("$/TIME$")
+        prompt_string = prompt_string.replace(f"$TIME${timeformat}$/TIME$", datetime.now().strftime(timeformat))
     return prompt_string
 
 
@@ -300,11 +300,14 @@ def boot():
         time.sleep(1)
         status.update("[italic yellow]Detecting if configuration file exists...[/]")
         time.sleep(3)
+        status.update(".       ")
         if detect_configuration_file():
-            console.log("[bold green]Exists[/]")
+            status.update("[bold green]Exists[/]")
             read_configuration()
         else:
-            console.log("[bold red]Does Not Exist! Creating New Configuration...[/]")
+            status.update("[bold red]Does Not Exist! Creating New Configuration...[/]")
+            time.sleep(2)
+            status.update(".      ")
             create_configuration()
         variables["CWD"] = variables["HOME_PATH"] = os.getcwd()
         save_configuration()
