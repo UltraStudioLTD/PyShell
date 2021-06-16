@@ -268,7 +268,7 @@ def prompt_parser(prompt_string: str) -> str:
     if "$TIME$" in prompt_string and "$/TIME$" in prompt_string:
         tmp1, tmp2 = prompt_string.split("$TIME$")
         timeformat, tmp2 = tmp2.split("$/TIME$")
-        prompt_string = prompt_string.replace("$TIME$$/TIME$", datetime.now().strftime(timeformat))
+        prompt_string = prompt_string.replace(f"$TIME${timeformat}$/TIME$", datetime.now().strftime(timeformat))
     return prompt_string
 
 
