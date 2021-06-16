@@ -77,6 +77,61 @@ def detect_platform():
     return isWindows, isPosix, isOther
 
 
+def detect_configuration_file() -> bool:
+    """
+    Detects if configuration file (conf.json) exists in HOME_PATH
+    :return: Result bool
+    """
+    return True if os.path.exists("conf.json") else False
+
+
+def create_configuration() -> None:
+    """
+    Creates configuration file if it doesn't exists
+    """
+    if detect_configuration_file():
+        logger("Configuration file already exists", "info")
+    else:
+        conf = open("conf.json", "x")
+        logger("Configuration file created", "info")
+        conf.close()
+
+
+def save_configuration() -> None:
+    """
+    Saves Configuration to conf.json
+    """
+    global variables
+    if detect_configuration_file():
+        os.remove("conf.json")
+        conf = open("conf.json", "w")
+        try:
+            json.dump(variables, conf)
+            logger("Configuration saved successfully!", "success")
+        except Exception:
+            logger("Configuration save failed!", "error")
+        conf.close()
+    else:
+        logger("Configuration file doesn't exists. Creating New...", "info")
+        create_configuration()
+
+
+def read_configuration() -> object:
+    """
+    Reads Configuration from conf.json
+    :return: configuration
+    """
+    global variables
+    if detect_configuration_file():
+        conf = open("conf.json", "r")
+        variables = json.load(conf)
+        conf.close()
+        return variables
+    else:
+        logger("Configuration file doesn't exists. Creating New...", "info")
+        create_configuration()
+
+
 def detect_color_support():
     """
     Detects if terminal supports following colors: Standard (16 colors), 256 and True (16m) colors
@@ -242,7 +297,17 @@ def boot():
         console.log(f"UserName: {getpass.getuser()}")
         time.sleep(1)
         console.log(f"Current Working Directory: {os.getcwd()}")
+        time.sleep(1)
+        status.update("[italic yellow]Detecting if configuration file exists...[/]")
+        time.sleep(3)
+        if detect_configuration_file():
+            console.log("[bold green]Exists[/]")
+            read_configuration()
+        else:
+            console.log("[bold red]Does Not Exist! Creating New Configuration...[/]")
+            create_configuration()
         variables["CWD"] = variables["HOME_PATH"] = os.getcwd()
+        save_configuration()
         time.sleep(2)
         status.update("[bold italic white]Detecting[/] [red]C[orange]o[cyan]l[green]o[purple]r[/] Support...[/]")
         time.sleep(1)
@@ -290,11 +355,11 @@ def command_parser(commands_string: str) -> None:
         elif command == "cd":
             if len(arguments) == 0:
                 os.chdir(variables["HOME_PATH"])
-                variables["CWD"] = variables["HOME_PATH"]
+                cd(variables["HOME_PATH"])
             elif len(arguments) == 1:
                 if os.path.isdir(arguments[0]):
                     os.chdir(arguments[0])
-                    CWD = arguments[0]
+                    cd(arguments[0])
                 else:
                     logger("Directory Doesn't Exists!", "error")
             else:
