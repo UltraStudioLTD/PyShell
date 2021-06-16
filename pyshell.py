@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    Python-based Shell
+	Python-based Shell
 """
 from __future__ import print_function, division
 import os
@@ -22,15 +22,16 @@ from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
-from rich.traceback import install as rich_tracebackInstaller
+from rich.traceback import install as rich_tracebackinstaller
 from rich.table import Table
 from rich.console import RenderGroup
 from rich.panel import Panel
-from supports_color import supportsColor
+from rich.live import Live
+from downcli import *
 import urllib.request
 import speedtest
 
-rich_tracebackInstaller()
+rich_tracebackinstaller()
 console = Console()
 
 logging.basicConfig(
@@ -40,71 +41,82 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)]
 )
 
-PS = "$COMPUTERNAME$$CWD$/> "
+variables = {
+    "PS": "$COMPUTERNAME$@$CWD$/> ",
+    "CWD": "",
+    "HOME_PATH": ""
+}
+
+
+def cd(new_directory: str) -> None:
+    """
+    change directory function for cd command
+    :param new_directory: new directory path
+    """
+    global variables
+    variables["CWD"] = new_directory
+
 
 log = logging.getLogger("rich")
 
+
 def detect_platform():
+    """
+    Detects platform
+    :return: Results in tuple (isWindows, isPosix, isOther)
+    """
     isWindows = False
     isPosix = False
     isOther = False
-    if sys.platform() == "win32":
+    if sys.platform == "win32":
         isWindows = True
-    elif sys.platform() == "posix":
+    elif sys.platform == "posix":
         isPosix = True
     else:
         isOther = True
-    return (isWindows, isPosix, isOther)
+    return isWindows, isPosix, isOther
+
 
 def detect_color_support():
-    supports_basic_colors = False
+    """
+    Detects if terminal supports following colors: Standard (16 colors), 256 and True (16m) colors
+    :return: detection results in tuple (Standard, 256, True)
+    """
+    supports_standard_colors = False
     supports_256_colors = False
     supports_true_colors = False
 
-    if supportsColor.stdout:
-        supports_basic_colors = True
-    if supportsColor.stdout.has256:
+    if console.color_system == "truecolor":
+        supports_standard_colors = True
         supports_256_colors = True
-    if supportsColor.stderr.has16m:
         supports_true_colors = True
-    return (supports_basic_colors, supports_256_colors, supports_true_colors)
+    elif console.color_system == "256":
+        supports_standard_colors = True
+        supports_256_colors = True
+    elif console.color_system == "standard":
+        supports_standard_colors = True
+    return supports_standard_colors, supports_256_colors, supports_true_colors
+
 
 def detect_internet_connection():
+    """
+    Detects if internet connection exists
+    :return: detection bool
+    """
     try:
         urllib.request.urlopen('http://google.com')
         return True
-    except:
+    except Exception:
         return False
 
-# def detect_windows_terminal():
-#     """
-#     Returns True if detects to be running in a powershell, False otherwise.
-#     """
-#     return sys.platform == 'win32' and os.environ.get('WT_SESSION', None) is not None
-
-# def supports_color():
-#     """
-#     Returns True if the running system's terminal supports color, and False
-#     otherwise.
-#     """
-#     plat = sys.platform
-#     supported_platform = plat != 'Pocket PC' and ('ANSICON' in os.environ)
-#     is_wnd_term = detect_windows_terminal()
-#     # isatty is not always implemented, #6223.
-#     is_a_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
-#     if (not supported_platform and is_wnd_term and is_a_tty):
-#         return True
-#     if not supported_platform or not is_a_tty:
-#         return False
-#     return True
 
 # def rainbow(freq, i):
 #     """Creates RGB values, inspired from https://github.com/busyloop/lolcat
-    
+
 #     Args:
 #         freq (int): Frequency, more the value; more the colours
 #         i (int): Current character position, used to set colours at character level
-    
+
 #     Returns:
 #         tuple: Contains integers R, G, B
 #     """
@@ -117,7 +129,7 @@ def detect_internet_connection():
 # def print_rainbow_text(text, freq=220, end="\n"):
 #     """Prints rainbow text if terminal support for colour text is detected, 
 #        else falls back to default terminal settings.
-    
+
 #     Args:
 #         text (str/list(str)): String or list of str. Provide list to make the whole
 #                               paragraph look consistent
@@ -148,6 +160,11 @@ def detect_internet_connection():
 #     print(end=end)
 
 def logger(message: str, severity: str) -> None:
+    """
+    Log Function
+    :param message: message to print
+    :param severity: level of severity
+    """
     if severity == "warning":
         log.warning(f"[bold yellow]{message}[/]", extra={"markup": True})
     elif severity == "critical":
@@ -163,20 +180,48 @@ def logger(message: str, severity: str) -> None:
     elif severity == "log":
         printf(f"[gray]{message}[/]")
 
-def prompt_parser(prompt_string: str) -> None:
+
+def cwd_parser(cwd: str) -> str:
+    """
+    Parses CWD
+    :param cwd: cwd to parse
+    :return: parsed cwd
+    """
+    global variables
+    if cwd[0] == "~":
+        return cwd.replace("~", variables["HOME_PATH"])
+    else:
+        return cwd
+
+
+def prompt_parser(prompt_string: str) -> str:
+    """
+    Parses prompt for Command Line Prompt
+    :param prompt_string: prompt to parse
+    :return: parsed prompt
+    """
+    global variables
     if "$COMPUTERNAME$" in prompt_string:
         prompt_string = prompt_string.replace("$COMPUTERNAME$", platform.node())
     if "$USERNAME$" in prompt_string:
         prompt_string = prompt_string.replace("$USERNAME$", getpass.getuser())
     if "$CWD$" in prompt_string:
-        prompt_string = prompt_string.replace("$CWD$", os.getcwd())
+        if variables["CWD"] == variables["HOME_PATH"]:
+            prompt_string = prompt_string.replace("$CWD$", "~")
+        else:
+            prompt_string = prompt_string.replace("$CWD$", variables["CWD"])
     if "$TIME$" in prompt_string and "$/TIME$" in prompt_string:
         tmp1, tmp2 = prompt_string.split("$TIME$")
         timeformat, tmp2 = tmp2.split("$/TIME$")
         prompt_string = prompt_string.replace("$TIME$$/TIME$", datetime.now().strftime(timeformat))
     return prompt_string
-    
+
+
 def boot():
+    """
+    Boots Application and get information
+    """
+    global variables
     with console.status("[bold italic white]Booting[/]...") as status:
         time.sleep(5)
         status.update("[bold yellow]Detecting OS (Operating System) details...[/]")
@@ -197,6 +242,7 @@ def boot():
         console.log(f"UserName: {getpass.getuser()}")
         time.sleep(1)
         console.log(f"Current Working Directory: {os.getcwd()}")
+        variables["CWD"] = variables["HOME_PATH"] = os.getcwd()
         time.sleep(2)
         status.update("[bold italic white]Detecting[/] [red]C[orange]o[cyan]l[green]o[purple]r[/] Support...[/]")
         time.sleep(1)
@@ -213,47 +259,117 @@ def boot():
             console.log(f"Internet Access: {True}")
             speed = speedtest.Speedtest()
             status.update("[bold italic green] Detecting Download Speed...[/]")
-            console.log(f"Download speed: {'{:.2f}'.format(speed.download()/1024/1024)} Mb/s")
+            console.log(f"Download speed: {'{:.2f}'.format(speed.download() / 1024 / 1024)} Mb/s")
             status.update("[bold italic green] Detecting Upload Speed...[/]")
-            console.log(f"Upload speed: {'{:.2f}'.format(speed.upload()/1024/1024)} Mb/s")
+            console.log(f"Upload speed: {'{:.2f}'.format(speed.upload() / 1024 / 1024)} Mb/s")
         else:
             console.log(f"Internet Access: {False}")
+        status.update("[bold yellow]Finishing Booting...[/]")
         time.sleep(2)
-    printf(f"[bold]:heavy_check_mark:[/] [bold italic green]Booting Successfull![/]")
+    printf(f"[bold]:heavy_check_mark:[/] [bold italic green]Booting Successful![/]")
     time.sleep(3)
     main()
 
+
 def command_parser(commands_string: str) -> None:
+    """
+    Parses commands from Command Line Prompt
+    :param commands_string: command string to parse
+    """
+    global variables
     commands = []
     for command in commands_string.split("&&"):
-    	commands.append(command.strip())
+        commands.append(command.strip())
     for command_str in commands:
-    	command = command_str.split(" ")[0]
-    	arguments = command_str.split(" ")[1:]
-    	if command in ["echo", "print"]:
-    		console.out(' '.join(arguments))
-    	elif command == "cwd":
-    		console.out(os.getcwd())
-    	elif command == "set":
-    		if arguments[0] == "PS":
-    			PS = " ".join(arguments[1:])
-    		else:
-    			logger("Invalid Argument", "error")
-    	elif command == "exit":
-    		if len(arguments) == 0:
-    			exit()
-    		elif len(arguments) == 1:
-    			sys.exit(int(arguments[0]))
-    		else:
-    			sys.exit(1)
-    	else:
-    		logger("Invalid Argument", "error")
+        command = command_str.split(" ")[0]
+        arguments = command_str.split(" ")[1:]
+        if command in ["echo", "print"]:
+            console.out(" ".join(arguments))
+        elif command == "cwd":
+            console.out(os.getcwd())
+        elif command == "cd":
+            if len(arguments) == 0:
+                os.chdir(variables["HOME_PATH"])
+                variables["CWD"] = variables["HOME_PATH"]
+            elif len(arguments) == 1:
+                if os.path.isdir(arguments[0]):
+                    os.chdir(arguments[0])
+                    CWD = arguments[0]
+                else:
+                    logger("Directory Doesn't Exists!", "error")
+            else:
+                logger("Invalid amount of arguments! Only 1 is passed!", "error")
+        elif command in ["mkdir", "makedir"]:
+            if len(arguments) != 1:
+                logger("Only 1 argument - new directory name, is passed!", "error")
+            else:
+                if os.path.exists(arguments[0]):
+                    logger("Directory already exists", "info")
+                else:
+                    try:
+                        os.mkdir(arguments[0])
+                        logger("Directory created", "success")
+                    except Exception as except_error:
+                        logger(f"Failed to create directory! Exception Encountered: {except_error}", "error")
+        elif command == "get":
+            if len(arguments) != 0:
+                try:
+                    printf(variables[arguments[0]])
+                except Exception:
+                    logger("Invalid Variable!", "error")
+        elif command == "set":
+            if len(arguments) == 2:
+                if arguments[0] in variables:
+                    try:
+                        variables[arguments[0]] = arguments[1]
+                        logger("Variable changed successfully!", "success")
+                    except Exception:
+                        logger("Variable change failed!", "error")
+                else:
+                    logger("Variable doesn't exist!", "error")
+            else:
+                logger("Need Argument!", "error")
+        elif command == "downcli":
+            if len(arguments) >= 1:
+                if arguments[0] in ["-h", "--help"]:
+                    print_downcli_help_msg()
+                    if arguments[1] in ["-d", "--directory"]:
+                        downcli(arguments[3:], arguments[2])
+                    else:
+                        downcli(arguments[1:], "./")
+                elif arguments[0] in ["-d", "--directory"]:
+                    downcli(arguments[2:], arguments[1])
+                else:
+                    downcli(arguments[0:], "./")
+            else:
+                print_downcli_help_msg()
+        elif command == "exit":
+            if len(arguments) == 0:
+                exit()
+            elif len(arguments) == 1:
+                sys.exit(int(arguments[0]))
+            else:
+                sys.exit(1)
+        else:
+            logger("Invalid Argument", "error")
     main()
 
-def main():
-    printf(prompt_parser(PS), end="")
+
+def command_line():
+    """
+    Command Line Prompt Function
+    """
+    printf(prompt_parser(variables["PS"]), end="")
     command = str(input())
     command_parser(command)
+
+
+def main():
+    """
+    Main Function
+    """
+    command_line()
+
 
 if __name__ == "__main__":
     boot()
