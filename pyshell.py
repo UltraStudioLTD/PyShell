@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-"""
-	Python-based Shell
-"""
+#!/usr/bin/env python3
+"""Python-based Shell"""
 from __future__ import print_function, division
 import os
 import os.path
@@ -27,7 +25,8 @@ from rich.table import Table
 from rich.console import RenderGroup
 from rich.panel import Panel
 from rich.live import Live
-from downcli import *
+from Plugins.DownCLI.DownCLI import *
+from Plugins.Als.Als import *
 import urllib.request
 import speedtest
 
@@ -428,6 +427,20 @@ def command_parser(commands_string: str) -> None:
                     downcli(arguments[0:], "./")
             else:
                 print_downcli_help_msg()
+        elif command == "downcli":
+            if len(arguments) >= 1:
+                if arguments[0] in ["-h", "--help"]:
+                    print_als_help_msg()
+                    if arguments[1] in ["-d", "--directory"]:
+                        downcli(arguments[3:], arguments[2])
+                    else:
+                        downcli(arguments[1:], "./")
+                elif arguments[0] in ["-d", "--directory"]:
+                    downcli(arguments[2:], arguments[1])
+                else:
+                    downcli(arguments[0:], "./")
+            else:
+                print_als_help_msg()
         elif command == "exit":
             if len(arguments) == 0:
                 exit()
