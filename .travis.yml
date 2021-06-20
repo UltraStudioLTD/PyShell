@@ -7,5 +7,6 @@ install:
   - pip install rich
   - pip install requests
   - pip install speedtest-cli
+  - pip install pytest
 script:
   - pytest
