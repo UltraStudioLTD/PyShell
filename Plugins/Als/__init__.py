@@ -12,6 +12,4 @@ __author__ = "Luka Mamukashvili (GitHub: UltraStudioLTD)"
 __author_links__ = {
     "GitHub": "https://www.github.com/UltraStudioLTD",
     "Dev": "https://www.dev.to/ultrastudio",
-    "Twitter": "https://www.twitter.com/3drx6FrkfCtpyHI",
-    "Instagram": "https://www.instagram.com/blue_reaper_gaming"
 }
